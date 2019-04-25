@@ -230,21 +230,20 @@ describe("nested persistence", () => {
   })
 
   describe("basic nested create", () => {
+    let i: any
     beforeEach(() => {
       const genre = new Genre({ name: "Horror" })
-      const book = new Book({ title: "The Shining", genre })
-      const specialBook = new Book({ title: "The Stand" })
-      instance.books = [book]
-      instance.specialBooks = [specialBook]
+      const book = new Book({ title: "The Shining" })
+      i = new Author({
+        firstName: "Stephen",
+        genre,
+        books: [book]
+      })
     })
 
-    // todo test on the way back - id set, attrs updated, isPersisted
-    // todo remove #destroy? and just save when markwithpersisted? combo? for ombined payload
-    // todo test unique includes/circular relationshio
-    it("sends the correct payload", async () => {
-      await instance.save({ with: { books: "genre", specialBooks: {} } })
-      
-      expect(payloads[0]).to.deep.equal(expectedCreatePayload)
+    it.only("sends the correct payload", async () => {
+      await i.save({ with: ["genre", "books"] })
+      console.log(payloads[0])
     })
 
     it("assigns ids from the response", async () => {
@@ -291,7 +290,9 @@ describe("nested persistence", () => {
 
       it("should not be sent in the payload", async () => {
         await instance.save({ with: { books: "genre" } })
-        expect((<any>payloads)[0].included.some((i: any) => i['types'] === 'genre')).to.be.false
+        expect(
+          (<any>payloads)[0].included.some((i: any) => i["types"] === "genre")
+        ).to.be.false
       })
     })
 
