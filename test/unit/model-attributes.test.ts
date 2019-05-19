@@ -1,5 +1,9 @@
 import { sinon, expect } from "../test-helper"
 import { Person, Author, PersonWithoutCamelizedKeys } from "../fixtures"
+import { WritePayload } from "../../src/util/write-payload"
+import { Model } from "../../src"
+import { Attr } from "../../src/decorators"
+import { eq } from "lodash-es"
 
 describe("Model attributes", () => {
   it("supports direct assignment", () => {
@@ -147,6 +151,108 @@ describe("Model attributes", () => {
           expect(() => {
             new Model({ extraThing: "bar" })
           }).to.throw(/Unknown attribute: extraThing/)
+        })
+      })
+    })
+  })
+
+  // todo expect error when no type defined
+  describe.only("when passed type", () => {
+    class TypedPerson extends Person {
+      @Attr({ type: "date" }) testDate!: Date
+      @Attr({ type: "shortDate" }) short!: Date
+      @Attr({ type: "hash" }) metaData!: Object
+    }
+
+    describe.only("when type is not registered", () => {
+      it("raises helpful error", () => {
+        let fn = () => {
+          class UnkownTypedPerson extends TypedPerson {
+            @Attr({ type: "asdf" }) unknown!: any
+          }
+        }
+        expect(fn).to.throw("Could not find type 'asdf' in the registry!")
+      })
+    })
+
+    // remove before commit, or turn into inline test
+    describe("shortDate", () => {
+      describe("deserializing", () => {
+        it("works", () => {
+          let person = new TypedPerson({ short: "2018-01-06T16:36:00-08:00" })
+          expect(person.short).to.eq("asdf")
+        })
+      })
+    })
+
+    describe("hash", () => {
+      describe("deserializing", () => {
+        it("works", () => {
+          let person = new TypedPerson({ metaData: { foo: "bar" } })
+          expect(person.metaData).to.deep.equal({ foo: "bar" })
+        })
+      })
+
+      describe("serializing", () => {
+        it("works", () => {
+          let person = new TypedPerson({ metaData: { foo: "bar" } })
+          let payload = new WritePayload(person)
+          let json = payload.asJSON() as any
+          expect(json.data.attributes.meta_data).to.deep.eq({ foo: "bar" })
+        })
+      })
+
+      describe("filtering", () => {
+        describe("when given JS Object", () => {
+          it("converts to JSON", () => {
+            let scope = TypedPerson.where({ metaData: { foo: "bar" } })
+            expect(scope.toQueryParams()).to.eq(
+              "filter[metaData]=%7B%22foo%22%3A%22bar%22%7D"
+            )
+          })
+        })
+
+        describe("when given string", () => {
+          it("passes the string straight-up", () => {
+            let scope = TypedPerson.where({ metaData: "json" })
+            expect(scope.toQueryParams()).to.eq("filter[metaData]=json")
+          })
+        })
+      })
+    })
+
+    describe("date", () => {
+      describe("serializing", () => {
+        it("converts to ISO UTC string", () => {
+          let date = new Date("Feb 28 2013 12:00:00 PST")
+          let person = new TypedPerson({ testDate: date })
+          let payload = new WritePayload(person)
+          let json = payload.asJSON() as any
+          expect(json.data.attributes.test_date).to.eq(
+            "2013-02-28T20:00:00.000Z"
+          )
+        })
+      })
+
+      describe("deserializing", () => {
+        describe("and given a UTC ISO string", () => {
+          it("coerces to a date", () => {
+            let person = new TypedPerson({
+              testDate: "2018-01-06T16:36:00-08:00"
+            })
+            expect(person.testDate instanceof Date).to.eq(true)
+            expect(person.testDate.toISOString()).to.eq(
+              "2018-01-06T16:36:00.008Z"
+            )
+          })
+        })
+
+        describe("and given a Date", () => {
+          it("does nothing", () => {
+            let date = new Date()
+            let person = new TypedPerson({ testDate: date })
+            expect(person.testDate).to.eq(date)
+          })
         })
       })
     })

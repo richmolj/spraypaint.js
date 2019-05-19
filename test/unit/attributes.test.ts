@@ -1,5 +1,6 @@
 import { expect, sinon } from "../test-helper"
 import { attr, Attribute } from "../../src/attribute"
+import { SpraypaintBase } from "../../src"
 
 describe("Attributes", () => {
   describe("Initializing Attribute", () => {
@@ -21,7 +22,6 @@ describe("Attributes", () => {
       const fooAttr: Attribute<Foo> = attr({ type: Foo })
 
       expect(fooAttr.type).to.eq(Foo)
-      it
     })
 
     it("defaults to persisted", () => {

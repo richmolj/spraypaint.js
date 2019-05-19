@@ -110,7 +110,16 @@ export class Scope<T extends SpraypaintBase = SpraypaintBase> {
 
     for (const key in clause) {
       if (clause.hasOwnProperty(key)) {
-        copy._filter[key] = clause[key]
+        let value = clause[key]
+        let attr = this.model.attributeList[key]
+
+        if (attr && attr.type) {
+          // todo if type exists
+          let type = this.model.types.all[attr.type]
+          value = type.serializeFilter(value)
+        }
+
+        copy._filter[key] = value
       }
     }
     return copy

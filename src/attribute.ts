@@ -1,12 +1,13 @@
 import { SpraypaintBase } from "./model"
+import { BaseType } from "./attribute-type-registry"
 
 export type Attr<T> = (() => T) | { new (...args: any[]): T & object }
 
-export type AttrType<T> = Attr<T>
+export type AttrType<T> = Attr<T> | string
 
 export interface AttrRecord<T> {
   name?: string
-  type?: AttrType<T>
+  type?: AttrType<T> | string
   persist?: boolean
 }
 
@@ -24,14 +25,15 @@ export type AttributeValue<Attributes> = {
 
 export type AttributeOptions = Partial<{
   name: string
-  type: () => any
+  type: (() => any) | string
   persist: boolean
 }>
 
 export class Attribute<T = any> {
   isRelationship = false
   name!: string
-  type?: T = undefined
+  type?: T | string = undefined
+  typeClass: undefined | BaseType = undefined
   persist: boolean = true
   owner!: typeof SpraypaintBase
 
@@ -54,6 +56,15 @@ export class Attribute<T = any> {
   }
 
   apply(ModelClass: typeof SpraypaintBase): void {
+    if (typeof this.type === "string") {
+      let found = ModelClass.types.all[this.type]
+      if (!found) {
+        // console.log('ERORR', typeof(this.type))
+        throw new Error(`Could not find type '${this.type}' in the registry!`)
+      } else {
+        this.typeClass = found
+      }
+    }
     Object.defineProperty(ModelClass.prototype, this.name, this.descriptor())
   }
 
@@ -65,7 +76,16 @@ export class Attribute<T = any> {
 
   // The model calls this getter
   getter(context: SpraypaintBase): any {
-    return context.attributes[this.name]
+    return this._typecast(context, context.attributes[this.name])
+  }
+
+  _typecast(model: SpraypaintBase, value: any) {
+    let type = model.klass.types.all[this.type]
+    if (type) {
+      return type.deserialize(value)
+    } else {
+      return value
+    }
   }
 
   // This returns the getters/setters for use on the *model*

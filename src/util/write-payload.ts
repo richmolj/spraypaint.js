@@ -39,6 +39,18 @@ export class WritePayload<T extends SpraypaintBase> {
         if (attrDef.type === Number && (value as any) === "") {
           attrs[writeKey] = null
         } else {
+          if (attrDef.type) {
+            let type = this.model.klass.types.all[attrDef.type]
+            if (type) {
+              value = type.serialize(value)
+            } else {
+              throw new Error(
+                `Attribute '${key}' has type '${
+                  attrDef.type
+                }', but could not find a type with that name!`
+              )
+            }
+          }
           attrs[writeKey] = value
         }
       }
@@ -106,8 +118,8 @@ export class WritePayload<T extends SpraypaintBase> {
             if (
               !this._isNewAndMarkedForDestruction(relatedModel) &&
               (idOnly ||
-              this.model.hasDirtyRelation(key, relatedModel) ||
-              relatedModel.isDirty(nested))
+                this.model.hasDirtyRelation(key, relatedModel) ||
+                relatedModel.isDirty(nested))
             ) {
               data.push(this._processRelatedModel(relatedModel, nested, idOnly))
             }
@@ -121,8 +133,8 @@ export class WritePayload<T extends SpraypaintBase> {
           if (
             !this._isNewAndMarkedForDestruction(relatedModels) &&
             (idOnly ||
-            this.model.hasDirtyRelation(key, relatedModels) ||
-            relatedModels.isDirty(nested))
+              this.model.hasDirtyRelation(key, relatedModels) ||
+              relatedModels.isDirty(nested))
           ) {
             data = this._processRelatedModel(relatedModels, nested, idOnly)
           }
@@ -191,12 +203,12 @@ export class WritePayload<T extends SpraypaintBase> {
     const wp = new WritePayload(model, nested, idOnly)
     const relatedJSON = wp.asJSON().data
 
-    if(!this._isNewAndMarkedForDestruction(model)) {
+    if (!this._isNewAndMarkedForDestruction(model)) {
       this._pushInclude(relatedJSON)
     }
 
     wp.included.forEach(incl => {
-      if(!this._isNewAndMarkedForDestruction(model)) {
+      if (!this._isNewAndMarkedForDestruction(model)) {
         this._pushInclude(incl)
       }
     })

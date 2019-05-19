@@ -24,6 +24,7 @@ import {
   IncludeScope
 } from "./scope"
 import { JsonapiTypeRegistry } from "./jsonapi-type-registry"
+import { AttributeTypeRegistry } from "./attribute-type-registry"
 import { camelize, underscore, dasherize } from "inflected"
 import { ILogger, logger as defaultLogger } from "./logger"
 import { MiddlewareStack, BeforeFilter, AfterFilter } from "./middleware-stack"
@@ -173,6 +174,7 @@ export class SpraypaintBase {
   static afterFetch: AfterFilter | undefined
 
   private static _typeRegistry: JsonapiTypeRegistry
+  private static _types: AttributeTypeRegistry
   private static _IDMap: IDMap
   private static _middlewareStack: MiddlewareStack
   private static _credentialStorageBackend: StorageBackend
@@ -257,6 +259,10 @@ export class SpraypaintBase {
       this.typeRegistry = new JsonapiTypeRegistry(this)
     }
 
+    if (!this.types) {
+      this.types = new AttributeTypeRegistry()
+    }
+
     if (!this.middlewareStack) {
       this._middlewareStack = new MiddlewareStack()
     }
@@ -300,6 +306,22 @@ export class SpraypaintBase {
     }
 
     return this.baseClass._IDMap
+  }
+
+  static get types(): AttributeTypeRegistry {
+    if (this.baseClass === undefined) {
+      throw new Error(`No base class for ${this.name}`)
+    }
+
+    return this.baseClass._types
+  }
+
+  static set types(registry: AttributeTypeRegistry) {
+    if (!this.isBaseClass) {
+      throw new Error("Cannot set a registry on a non-base class")
+    }
+
+    this._types = registry
   }
 
   static get typeRegistry(): JsonapiTypeRegistry {
